@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<!--
+/*
+The following license only applies to this files. Please note
+that the source code for the Mongoose web server, distributed with this
+is GPL-licensed.
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org>
+*/
+-->
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>DAQ Simulator GUI</title>
+<style>
+body {
+	margin: 0em;
+	padding: 1em;
+	color: white;
+	background: black;
+}
+
+#top_container {
+	width: 600px;
+}
+
+.container {
+	background-color: inherit;
+	border: solid 1px;
+	padding: 1em;
+	position: relative;
+	margin-top: 1em;
+}
+
+.container_label {
+	background-color: inherit;
+	position: absolute;
+	top: -0.5em;
+	margin-bottom: -1em;
+	padding-left: 0.5em;
+	padding-right: 0.5em;
+}
+.toggleswitch_container {
+}
+button {
+	width: 3em;
+	height: 2em;
+}
+.led {
+	width: 0.9em;
+	height: 0.9em;
+	border-radius: 50%;
+	display: inline-block;
+	background: orange;
+	margin-right: 2em;
+}
+.seven_segment_digit {
+	display: inline-block;
+	font-size: 5px;
+	width: 7em;
+	height: 10em;
+	margin: 0em;
+	padding: 0em;
+	background-color: transparent;
+	position: relative;
+	transform: skewX(-7deg);
+}
+.seven_segment_segment {
+	background-size: 50% 50%;
+	background-repeat: no-repeat;
+	position: absolute;
+}
+.seven_segment_a {
+	width: 4em;
+	height: 1em;
+	left: 1em;
+	top: 0.5em;
+}
+
+.seven_segment_b {
+	width: 1em;
+	height: 4em;
+	top: 1em;
+	left: 4.5em;
+}
+
+.seven_segment_c {
+	width: 1em;
+	height: 4em;
+	top: 5em;
+	left: 4.5em;
+}
+
+.seven_segment_d {
+	width: 4em;
+	height: 1em;
+	top: 8.5em;
+	left: 1em;
+}
+
+.seven_segment_e {
+	width: 1em;
+	height: 4em;
+	top: 5em;
+	left: 0.5em;
+}
+
+.seven_segment_f {
+	width: 1em;
+	height: 4em;
+	top: 1em;
+	left: 0.5em;
+}
+
+.seven_segment_g {
+	width: 4em;
+	height: 1em;
+	left: 1em;
+	top: 4.5em;
+}
+
+.seven_segment_p {
+	width: 1em;
+	height: 1em;
+	left: 6.25em;
+	top: 8.5em;
+	border-radius: 50%;
+}
+
+.unlit {
+	opacity: 0.1;
+}
+.toggleswitch_container {
+	width: 3em;
+	height: 1.5em;
+	background: aqua;
+	
+	display: inline-block;
+}
+#arm_container {
+	width: 450px;
+	height: 450px;
+	padding: 0px;
+}
+#arm_container > .container_label {
+	left: 1em;
+}
+.arm_segment {
+	height: 0px;
+	position: absolute;
+	border: solid 1px;
+	background: inherit;
+	transform-origin: left center;
+}
+#arm_segment_upper {
+	width: 25%;
+	top: 50%;
+	left: 50%;
+	top: calc(50% - 1px);
+	left: calc(50% - 1px);
+	transform: rotate(-45deg);
+}
+#arm_segment_lower {
+	width: 100%;
+	top: -1px;
+	left: 100%;
+	transform: rotate(45deg);
+}
+#arm_handle {
+	position: absolute;
+	width: 30px;
+	height: 30px;
+	transform: translate(50%,-50%);
+	border: solid 2px;
+	border-radius: 50%;
+	background: inherit;
+	right: 0;
+}
+#arm_input {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: transparent;
+}
+#arm_base {
+	position: absolute;
+	width: 5%;
+	height: 5%;
+	top: calc(47.5% - 2px);
+	left: calc(47.5% - 2px);
+	border: solid 2px;
+	background: inherit;
+}
+</style>
+<style id="light">
+body {
+	color: black;
+	background: white;
+}
+.unlit {
+	opacity: 0.1;
+}
+.seven_segment_segment {
+	background: black;
+	background:
+		linear-gradient(135deg, transparent 0.353em, black 0) top left,
+		linear-gradient(225deg, transparent 0.353em, black 0) top right,
+		linear-gradient(315deg, transparent 0.353em, black 0) bottom right,
+		linear-gradient(45deg,  transparent 0.353em, black 0) bottom left;
+
+}
+</style>
+<script src="/lib/jquery"></script>
+</head>
+<body>
+	<div id="title">
+		<h1>DAQ Simulator</h1>
+	</div>
+	Select Hardware: <select id="hardware_select">
+		<option value=" "> </option>
+		<option value="1">1. 3 LEDs/2 Switches</option>
+		<option value="2">2. 6 LEDs/2 Switches</option>
+		<option value="4">4. Display/2 Switches</option>
+		<option value="5">5. Heat/Light</option>
+		<option value="6">6. 4 LEDs/4 Switches</option>
+		<option value="7">7. Display/Arm</option>
+	</select><br/>
+	<input type="checkbox" id="dark_theme_select"/> Dark Theme<br/>
+	<div class="container" id="top_container" style="display:none">
+		<div class="container_label">Controls</div>
+		<div class="container" id="pushbutton_container">
+			<div class="container_label">Pushbuttons</div>
+			<button id="pushbutton_0" class="pushbutton">0</button>
+			<button id="pushbutton_1" class="pushbutton">1</button>
+			<button id="pushbutton_2" class="pushbutton">2</button>
+			<button id="pushbutton_3" class="pushbutton">3</button>
+		</div>
+		<div class="container" id="toggleswitch_container">
+			<div class="container_label">Toggle Switches</div>
+			0:<input type="checkbox" class="toggleswitch" id="toggleswitch_0"/> 1:<input type="checkbox" class="toggleswitch" id="toggleswitch_1"/>
+		</div>
+		<div class="container" id="led_container">
+			<div class="container_label">LEDs</div>
+			<div class="led led_0 led_green unlit"></div>
+			<div class="led led_1 led_yellow unlit"></div>
+			<div class="led led_2 led_red unlit"></div>
+			<div class="led led_3 led_blue unlit"></div>
+			<div class="led led_4 led_yellow unlit"></div>
+			<div class="led led_5 led_red unlit"></div>
+		</div>
+		<div class="container" id="seven_segment_container">
+			<div class="container_label">Seven Segment Displays</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+			<div class="seven_segment_digit">
+				<div class="seven_segment_segment seven_segment_p unlit"></div><div class="seven_segment_segment seven_segment_g unlit"></div><div class="seven_segment_segment seven_segment_f unlit"></div><div class="seven_segment_segment seven_segment_e unlit"></div>
+				<div class="seven_segment_segment seven_segment_d unlit"></div><div class="seven_segment_segment seven_segment_c unlit"></div><div class="seven_segment_segment seven_segment_b unlit"></div><div class="seven_segment_segment seven_segment_a unlit"></div>
+			</div>
+		</div>
+		<div class="container" id="analog_container">
+			<div class="container_label">Analog Inputs</div>
+			<span id="analog_label_0">Temperature Sensor Voltage: </span><input type="" value="0.0" class="analog_input" id="analog_0"/><br/>
+			<span id="analog_label_1">Photocell Voltage: </span><input type="" value="0.0" class="analog_input" id="analog_1"/><br/>
+			<div class="container" id="arm_container">
+				<div class="container_label">Arm</div>
+				<div id="arm_base"></div>
+				<div class="arm_segment" id="arm_segment_upper"><div class="arm_segment" id="arm_segment_lower"><div class="" id="arm_handle"></div></div></div>
+				<div id="arm_input"></div>
+			</div>
+		</div>
+	</div>
+	<div id="noscript_error">
+		If you are seeing this message, your browser has disabled or does not support Javascript, which is required for the simulator to function.
+	</div>
+	<div id="setup_error" style="display:none">
+		Error: Invalid setup number.
+	</div>
+	<div id="session_error" style="display:none">
+		Server is no longer responding to this session.
+	</div>
+<script>
+function getUrlParams() { 
+	var raw = window.location.search.substring(1).split("&"); 
+	var processed = {}; 
+	for (var i = 0; i < raw.length; i++) { 
+		var name = raw[i].substring(0, raw[i].indexOf("=")); 
+		var arg = raw[i].substring(raw[i].indexOf("=") + 1); 
+		if (name) processed[name.toLowerCase()] = arg; 
+    } 
+	return processed; 
+}
+
+function checkForUpdates() {
+	var currentVersion = "0.1.0";
+	var versionURL = "https://api.github.com/repos/fb39ca4/apsc160-daq-simulator/releases";
+	var downloadURL = localStorage.getItem("downloadURL") || "https://github.com/fb39ca4/apsc160-daq-simulator/releases"
+	var latestVersion = localStorage.getItem("latestVersion");
+	var lastVersionCheck = parseInt(localStorage.getItem("lastVersionCheck")) || 0;
+	var currentTime = (new Date).getTime();
+	var compareAndNotify = function() {
+		var latestDigits = latestVersion.split(".");
+		var currentDigits = currentVersion.split(".");
+		var newerVersion = false;
+		for (var i = 0; i < Math.max(latestDigits.length, currentDigits.length); i++) {
+			if (parseInt(latestDigits[i]) > parseInt(currentDigits[i])) {
+				newerVersion = true;
+				break;
+			}
+		}
+		if (newerVersion) {
+			$("#title").after(
+				'<span>Update Available: The current version is '+currentVersion+'. <a href="'+
+				downloadURL+'" target="_blank">Click here to download the latest version, '+
+				latestVersion+'</a>.</span><br/><br/>'
+			)
+		}
+	}
+	if ((currentTime - lastVersionCheck) > 3600000 || latestVersion === null) {
+		$.ajax({
+			url: versionURL,
+			dataType: "json",
+		}).done(function(response) {
+			localStorage.setItem("lastVersionCheck", currentTime);
+			latestVersion = response[0].tag_name;
+			downloadURL = response[0].html_url;
+			localStorage.setItem("latestVersion", latestVersion);
+			localStorage.setItem("downloadURL", downloadURL);
+			compareAndNotify();
+		});
+	}
+	else {
+		compareAndNotify();
+	}
+}
+
+document.body.onload = function() {
+	$("#noscript_error").hide();
+	
+	urlParams = getUrlParams();
+	
+	document.getElementById("dark_theme_select").checked = (window.localStorage.getItem("darkTheme") === "true");
+	$("#dark_theme_select").change(function() {
+		if (this.checked) {
+			$("head").append('<style id="dark_css">body{color: white;background: black;}.unlit {opacity: 0.25;}.seven_segment_segment{background:white;background:linear-gradient(135deg,transparent 0.353em,white 0) top left,linear-gradient(225deg,transparent 0.353em,white 0) top right,linear-gradient(315deg,transparent 0.353em,white 0) bottom right,linear-gradient(45deg,transparent 0.353em,white 0) bottom left;}a{color:lightskyblue}a:visited{color:mediumpurple}</style>');
+			window.localStorage.setItem("darkTheme", "true");
+		}
+		else {
+			$("#dark_css").remove();
+			window.localStorage.setItem("darkTheme", "false");
+		}
+	}).trigger("change");
+	checkForUpdates();
+	
+	sevenSegmentDisplay = $(".seven_segment_digit").map(function() {
+		return $(this).children(".seven_segment_segment");
+	}).get().reverse();
+	led = $(".led");
+	displayWrite = function(position, data) {
+		position = parseInt(position);
+		data = parseInt(data);
+		if (position >= 0 && position < 8) {
+			var digit = sevenSegmentDisplay[position];
+			data = data & 0xFF;
+			for (var i = 0; i < 8; i++) {
+				var isLit = (data & 0x1) === 1;
+				data = data >> 1;
+				if (isLit) $(digit[i]).removeClass("unlit");
+				else $(digit[i]).addClass("unlit");
+			}
+		}
+	}
+	
+	ledWrite = function(position, data) {
+		position = parseInt(position);
+		data = parseInt(data);
+		if (position >= 0 && position < 6) {
+			if (data == 0) $(led[position]).addClass("unlit");
+			else if (data == 1) $(led[position]).removeClass("unlit");
+		}
+	}
+	
+	function selectHardware(n) {
+		var valid = [1, 2, 4, 5, 6, 7];
+		if (valid.indexOf(n) < 0) {
+			$("#top_container").hide();
+			$("#setup_error").show();
+		}
+		else {
+			$("#top_container").show();
+			$("#setup_error").hide();
+			switch (n) {
+			case 1:
+				$("#pushbutton_container").hide();
+				$("#toggleswitch_container").show();
+				$(".toggleswitch").trigger("change");
+				$("#led_container").show();
+				$(".led").slice(0,3).show();
+				$(".led").slice(3,6).hide();
+				$(".led").slice(0,2).css("background", "yellowgreen");
+				$(".led").slice(2,3).css("background", "crimson");
+				$("#seven_segment_container").hide();
+				$("#analog_container").hide();
+				$("#arm_container").hide();
+				break;
+			case 2:
+				$("#pushbutton_container").show();
+				$(".pushbutton").trigger("mouseup");
+				$("#toggleswitch_container").hide();
+				$("#led_container").show();
+				$(".led").slice(0,6).show();
+				$(".led").slice(0,1).css("background", "yellowgreen");
+				$(".led").slice(1,2).css("background", "gold");
+				$(".led").slice(2,3).css("background", "crimson");
+				$(".led").slice(3,4).css("background", "yellowgreen");
+				$(".led").slice(4,5).css("background", "gold");
+				$(".led").slice(5,6).css("background", "crimson");
+				$("#seven_segment_container").hide();
+				$("#analog_container").hide();
+				$("#arm_container").hide();
+				break;
+			case 4:
+				$("#pushbutton_container").hide();
+				$("#toggleswitch_container").show();
+				$(".toggleswitch").trigger("change");
+				$("#led_container").hide();
+				$("#seven_segment_container").show();
+				$("#analog_container").hide();
+				$("#arm_container").hide();
+				break;
+			case 5:
+				$("#pushbutton_container").hide();
+				$("#toggleswitch_container").show();
+				$(".toggleswitch").trigger("change");
+				$("#led_container").hide();
+				$("#seven_segment_container").show();
+				$("#analog_container").show();
+				$("#analog_label_0").text("Temperature Sensor Voltage: ");
+				$("#analog_label_1").text("Photocell Voltage: ");
+				$("#arm_container").hide();
+				break;
+			case 6:
+				$("#pushbutton_container").show();
+				$(".pushbutton").trigger("mouseup");
+				$("#toggleswitch_container").hide();
+				$(".toggleswitch").trigger("change");
+				$("#led_container").show();
+				$(".led").slice(0,4).show();
+				$(".led").slice(0,1).css("background", "yellowgreen");
+				$(".led").slice(1,2).css("background", "gold");
+				$(".led").slice(2,3).css("background", "crimson");
+				$(".led").slice(3,4).css("background", "cornflowerblue");
+				$(".led").slice(4,6).hide();
+				$("#seven_segment_container").hide();
+				$("#analog_container").hide();
+				$("#arm_container").hide();
+				break;
+			case 7:
+				$("#pushbutton_container").hide();
+				$("#toggleswitch_container").show();
+				$(".toggleswitch").trigger("change");
+				$("#led_container").hide();
+				$("#seven_segment_container").show();
+				$("#analog_container").show();
+				$("#analog_label_0").text("Base Angle: ");
+				$("#analog_label_1").text("Elbow Angle: ");
+				$("#arm_container").show();
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	
+
+	function setHardwareSelect(n) {
+		var indices = [0,1,2,0,3,4,5,6];
+		document.getElementById("hardware_select").selectedIndex = indices[n];
+	}
+	$("#hardware_select").change(function(){
+		var setupNums = [,1,2,4,5,6,7];
+		selectHardware(setupNums[this.selectedIndex]);
+	});
+
+	digitalOutputsSent = [false, false, false, false];
+	function sendDigital(channel, value) {
+		var channel = parseInt(channel);
+		if (channel >= 0 && channel < 4) {
+			value = (value === true);
+			if (value !== digitalOutputsSent[channel]) {
+				digitalOutputsSent[channel] = value;
+				$.ajax({
+					url: "/api/in?" + urlParams.session_id,
+					method: "POST",
+					contentType: "text",
+					data: "di " + channel + " " + (value ? "1" : "0") + "\n\0",
+				})
+			}
+		}
+	}
+
+	analogOutputsSent = [false, false];
+	function sendAnalog(channel, value) {
+		var channel = parseInt(channel);
+		if (channel >= 0 && channel < 2) {
+			if (value !== analogOutputsSent[channel]) {
+				analogOutputsSent[channel] = value;
+				$.ajax({
+					url: "/api/in?" + urlParams.session_id,
+					method: "POST",
+					contentType: "text",
+					data: "ai " + channel + " " + value +"\n\0",
+				})
+			}
+		}
+	}
+
+	function sendMultipleAnalog() {
+		var data = "";
+		for (i = 0; i < arguments.length; i++) {
+			if (analogOutputsSent[i] !== arguments[i]) {
+				analogOutputsSent[i] = arguments[i];
+				data += "ai " + i + " " + arguments[i] + "\n";
+			}
+		}
+		if (data !== "") {
+			data += "\0";
+			console.log(data);
+			$.ajax({
+				url: "/api/in?" + urlParams.session_id,
+				method: "POST",
+				contentType: "text",
+				data: data,
+			})	
+		}
+	}
+
+	var buttonOn = function() {
+		var channel = parseInt(this.id.split("_")[1]);
+		sendDigital(channel, true);
+	}
+	$(".pushbutton").on("mousedown", buttonOn);
+
+	var buttonOff = function() {
+		var channel = parseInt(this.id.split("_")[1]);
+		sendDigital(channel, false);
+	}
+	$(".pushbutton").on("mouseup mouseleave", buttonOff);
+
+	var toggleChange = function() {
+		var channel = parseInt(this.id.split("_")[1]);
+		sendDigital(channel, this.checked);
+	}
+	$(".toggleswitch").change(toggleChange).trigger("change");
+
+	validateNumericInput = function(input) {
+		input = input || this;
+		var oldValue = input.value;
+		var value = parseFloat(input.value);
+		var valid;
+		if (isNaN(value)) {
+			input.style.color = "red";
+			valid = false;
+		}
+		else {
+			input.style.color = "";
+			valid = true;
+		}
+		input.value = oldValue;
+		return valid;
+	}
+
+	$(".analog_input").on("change keyup paste", function() {
+		if (validateNumericInput(this)) {
+			channel = parseInt(this.id.split("_")[1]);
+			sendAnalog(channel, this.value);
+			if (channel === 0) {
+				$("#arm_segment_lower").css("transform", "rotate(" + (-parseFloat(this.value)).toFixed(3) + "deg)");
+			}
+			else if (channel === 1) {
+				$("#arm_segment_upper").css("transform", "rotate(" + (-parseFloat(this.value)).toFixed(3) + "deg)");
+			}
+		}
+	});
+
+	armPosX = Math.sqrt(2) / 2 + 0.5;
+	armPosY = 0.5;
+	armActive = false;
+	$("#arm_input").on("mousedown", function(event) {
+		armActive = true;
+		positionArm(event.offsetX / $(this).width(), event.offsetY / $(this).height());
+	});
+	$("#arm_input").on("mousemove", function(event) {
+		if (armActive) {
+			positionArm(event.offsetX / $(this).width(), event.offsetY / $(this).height());
+		}
+	});
+	$("#arm_input").on("mouseleave mouseup", function(event) {
+		if (armActive) {
+			positionArm(event.offsetX / $(this).width(), event.offsetY / $(this).height());
+			armActive = false;
+		}
+	});
+	positionArm = function(x, y) {
+		x = 2 * x - 1;
+		y = -(2 * y - 1);
+		var r = Math.sqrt(x * x + y * y);
+		if (r > 1) {
+			x /= r;
+			y /= r;
+			r = 1;
+		}
+		//$("#arm_handle").css("top", (-50*y+50).toFixed(5) + "%").css("left", (50*x+50).toFixed(5) + "%");
+		var theta = Math.atan2(y, x);
+		var angle = Math.acos(r);
+		var baseAngle = (180 * (theta + angle) / Math.PI);
+		var elbowAngle = (180 * (2 * angle) / Math.PI);
+		$("#arm_segment_upper").css("transform", "rotate(" + (-baseAngle).toFixed(3) + "deg)");
+		$("#arm_segment_lower").css("transform", "rotate(" + elbowAngle.toFixed(3) + "deg)");
+		validateNumericInput($("#analog_0").val(baseAngle.toFixed(3))[0]);
+		validateNumericInput($("#analog_1").val((-elbowAngle).toFixed(3))[0]);
+		sendMultipleAnalog(baseAngle.toFixed(3), (-elbowAngle).toFixed(3));
+	}
+	positionArm(Math.sqrt(2)/8 + 0.75, 0.5 - Math.sqrt(2)/8);
+
+	processInput = function(data) {
+		var lines = data.split("\n");
+		for (var i in lines) {
+			var args = lines[i].split(" ");
+			switch (args[0]) {
+			case "do":
+				if (args.length >= 3) ledWrite(parseInt("0x" + args[1]), parseInt("0x" + args[2]));
+				break;
+			case "ds":
+				if (args.length >= 3) displayWrite(parseInt("0x" + args[1]), parseInt("0x" + args[2]));
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	$.ajax({
+		url: "/api/sync?" + urlParams.session_id,
+		method: "GET",
+		datatype: "text",
+	}).done(function(data, status, jqXHR) {
+		processInput(data);
+	})
+	abort = false;
+	selectHardware(parseInt(urlParams.setup_num));
+	setHardwareSelect(parseInt(urlParams.setup_num));
+	inputLoop = function() {
+		$.ajax({
+			url: "/api/out?" + urlParams.session_id,
+			method: "GET",
+			datatype: "text",
+		}).done(function(data, status, jqXHR) {
+			processInput(data);
+			inputLoop();
+		}).fail(function(jqXHR, status, errorThrown) {
+			console.log(jqXHR, status, errorThrown);
+			if (jqXHR.status == 401) {
+				$("#top_container").hide();
+				$("#session_error").show()
+			}
+			else {
+				inputLoop();
+			}
+		});
+	}
+	inputLoop();
+}
+</script>
+</body>
+</html>
