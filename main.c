@@ -2,90 +2,86 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <time.h>
+#include <stdbool.h>
 #include "daqsim.h"
 
+// random numbers
+int randInt(int lower, int upper){
+    // pseudo-random integer generator
+    return ((rand() % (upper - lower + 1)) + lower);
+}
 
-/*
-//This function displays a formatted string on the seven segment displays.
-//Takes the same arguments as printf. Character set is far from complete, but
-//it will at least print numbers.
-void daq_printf(char* format, ...) {
-	const int digits[] = { 252, 96, 218, 242, 102, 182, 190, 224, 254, 246 };
-	const int uppercase[] = { 0xEE, 0xFE, 0x9C, 0xFC, 0x9E, 0x8E, 0xBC, 0x6E};
-	int dispPos = 0;
-	char ascii[17];
-	int display[17] = { 0 };
-	va_list args;
-	va_start(args, format);
-	vsnprintf(ascii, 16, format, args);
-	va_end(args);
-	//printf("%s\n", ascii);
-	for (int i = 0; i < 17; i++) {
-		if (ascii[i] == 0) break;
-		else if (ascii[i] == ' ') display[dispPos++] = 0;
-		else if (ascii[i] == '.') {
-			if ((i > 0) && ((display[dispPos - 1] & 1) == 0)) {
-				display[dispPos - 1] = display[dispPos - 1] | 1;
-			}
-			else display[dispPos++] = 1;
-		}
-		else if (ascii[i] == '-') display[dispPos++] = 0x02;
-		else if ((ascii[i] >= '0') && (ascii[i] <= '9')) display[dispPos++] = digits[ascii[i] - '0'];
-		else if (ascii[i] >= 0x61 && ascii[i] <= 0x7A) display[dispPos++] = uppercase[ascii[i] - 0x61];
-		else display[i] = 254;
-	}
-	if (dispPos > 8) {
-		display[7] = 2;
-	}
-	for (int i = 0; i < 8; i++) {
-		displayWrite(display[i], 7-i);
-	}
-}*/
-
-
-
-//Turns on/off LEDs according to the bits of the function argument.
-//Least significant bit corresponds to LED0, and so on.
-void set_leds(int pattern) {
-	for (int i = 0; i < DAQ_NUM_DIGITAL_OUTPUTS; i++) {
-		digitalWrite(i, pattern & 1);
-		pattern = pattern >> 1;
-	}
+void generateSequence(int length, int data[]){
+    // generate a sequence of N pseudo random integers
+    for(int i = 0; i < length; i++){
+        data[i] = randInt(0,3); // 0-3 to represent the indexes of the leds
+    }
 }
 
 int main(void) {
-	//Declare variables, start simulator server.
-	int led_pattern = 0;
-	int prev_sw0_state = 0;
-	setupDAQ(6); // this is the display UI( simon game uses 6)
-	//Main loop
+    // seed the generator  should only be called once
+    srand((unsigned)time(0));
+    // Initialize the sequence counter with the lower possible size of the array
+    int s_counter = 1;
+    // setup the DAQ display
+	setupDAQ(6); // this is to display UI( simon game uses 6 with 4 I&O)
+
+	//Main loop to maintain the gpu
 	while (continueSuperLoop()) {
-		//Sleep to avoid high CPU usage.
+		// Sleep to avoid high CPU usage.
 		daq_sleep(10);
-		//Display a binary counter on the LEDs that increments every time the
-		//state of switch/button 0 changes. Use Hardware 2 for best effect.
-		int curr_sw0_state = digitalRead(0);
-		if (curr_sw0_state != prev_sw0_state) {
-			prev_sw0_state = curr_sw0_state;
-			led_pattern++;
-			set_leds(led_pattern);
+		// generate sequence
+		int data[s_counter];
+		generateSequence(s_counter, data);
+		// display the  sequence
+		for(size_t i = 0; i < s_counter; i++){
+		    digitalWrite(data[i], 1); // flash the LEDs in a sequence one by one
+		    daq_sleep(5);
+            digitalWrite(data[i], 0); // flash the LEDs in a sequence one by one
+            daq_sleep(5);
 		}
-
-		/*//If switch 1 is on, show the angles of the arms on the display.
-		if (digitalRead(1)) {
-			daq_printf("%4d%4d", (int)analogRead(0), (int)analogRead(1));
+		// read the buttons
+        // modify the array to include the real locations
+        for(size_t i = 0; i < s_counter; i++){
+            data[i] = (data[i] + 1); // changing the values to actual locations
+        }
+        // process clicks
+        bool  fail_check = false;
+		for(size_t i = 0; i < s_counter; i++){
+		    if(data[i] % 2 != 0){ // odd
+                int  clicked_button_st = digitalRead((data[i] - 1 )); // read from odd channels
+                if(clicked_button_st == 0){
+                    fail_check = false;
+                }
+		    }else{
+                int  clicked_button_st = digitalRead((data[i] - 1 )); // read from even channels
+                if (clicked_button_st == 1){
+                    fail_check = true;
+                }
+		    }
 		}
-		//Otherwise display the current time.
-		else {
-			time_t raw_time;
-			time(&raw_time);
-			char time_str[20];
-			strftime(time_str, 19, "%H.%M.%S", localtime(&raw_time));
-			daq_printf("%s\n", time_str);
-		}*/
-
+		if(!fail_check){ // success blink blue 3 times
+		    for( int i = 0; i < 3; i++){
+		        digitalWrite(3, 1);
+		        daq_sleep(5);
+                digitalWrite(3, 0);
+                daq_sleep(5);
+		    }
+		    s_counter = (s_counter++ <= 5) ? ( s_counter++ ): 1 ; // else start the game
+		}else{ // failure blinks read blue times
+            for( int i = 0; i < 3; i++){
+                digitalWrite(1, 1);
+                daq_sleep(5);
+                digitalWrite(1, 0);
+                daq_sleep(5);
+            }
+            // s_counter retains the original value
+		}
+		// resets all the leds before next loop
+        for (int j = 0; j < 4; ++j) {
+            digitalWrite(j, 0);
+        }
 	}
 	return 0;
 };
